@@ -8,6 +8,8 @@ package com.geiko.services;
         import org.springframework.jdbc.core.RowMapper;
         import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
         import org.springframework.stereotype.Service;
+        import org.springframework.transaction.interceptor.TransactionAspectSupport;
+
         import javax.sql.DataSource;
         import java.sql.ResultSet;
         import java.sql.SQLException;
@@ -30,8 +32,11 @@ public class CarService implements CarDao{
                 .withTableName("car").usingGeneratedKeyColumns("id");
     }
 
-    public CarService(WheelService wheelService, EngineService engineService) {
+    public void setWheelService(WheelService wheelService) {
         this.wheelService = wheelService;
+    }
+
+    public void setEngineService(EngineService engineService) {
         this.engineService = engineService;
     }
 
@@ -59,13 +64,14 @@ public class CarService implements CarDao{
             Number newId = insertCar.executeAndReturnKey(parameters);
             car.setId(newId.intValue());
             car.getEngine().setCarId(newId.intValue());
-            engineService.addEngine(car.getEngine());
             for (Wheel wheel : car.getWheels()) {
                 wheel.setCarId(newId.intValue());
                 wheelService.addWheel(wheel);
             }
+            engineService.addEngine(car.getEngine());
         }catch (Exception e){
             e.printStackTrace();
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         }
     }
 }
